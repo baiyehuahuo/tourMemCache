@@ -11,8 +11,3 @@ type Cache interface {
 type Value interface {
 	Len() int
 }
-
-type Entry struct {
-	Key   string
-	Value any
-}

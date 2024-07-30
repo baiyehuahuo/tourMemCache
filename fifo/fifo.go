@@ -24,6 +24,11 @@ type fifo struct {
 	cache map[string]*list.Element
 }
 
+type entry struct {
+	key   string
+	value any
+}
+
 func New(maxBytes int, onEvicted func(key string, value any)) cache.Cache {
 	return &fifo{
 		maxBytes:  maxBytes,
@@ -43,17 +48,17 @@ func (c *fifo) Set(key string, value any) {
 	// 缓存已存在的情况下
 	if e, ok := c.cache[key]; ok {
 		c.ll.MoveToBack(e)
-		en := e.Value.(*cache.Entry)
-		c.usedBytes += util.CalcLen(value) - util.CalcLen(en.Value)
-		en.Value = value
+		en := e.Value.(*entry)
+		c.usedBytes += util.CalcLen(value) - util.CalcLen(en.value)
+		en.value = value
 	} else {
 		// 缓存不存在的情况下
-		entry := &cache.Entry{
-			Key:   key,
-			Value: value,
+		en := &entry{
+			key:   key,
+			value: value,
 		}
-		c.cache[key] = c.ll.PushBack(entry)
-		c.usedBytes += util.CalcLen(entry.Value)
+		c.cache[key] = c.ll.PushBack(en)
+		c.usedBytes += util.CalcLen(en.value)
 	}
 
 	for c.usedBytes > c.maxBytes {
@@ -66,7 +71,7 @@ func (c *fifo) Get(key string) any {
 	if !ok {
 		return nil
 	}
-	return e.Value.(*cache.Entry).Value
+	return e.Value.(*entry).value
 }
 
 func (c *fifo) delElement(e *list.Element) {
@@ -75,10 +80,10 @@ func (c *fifo) delElement(e *list.Element) {
 	}
 
 	c.ll.Remove(e)
-	delete(c.cache, e.Value.(*cache.Entry).Key)
-	c.usedBytes -= util.CalcLen(e.Value.(*cache.Entry).Value)
+	delete(c.cache, e.Value.(*entry).key)
+	c.usedBytes -= util.CalcLen(e.Value.(*entry).value)
 	if c.onEvicted != nil {
-		c.onEvicted(e.Value.(*cache.Entry).Key, e.Value.(*cache.Entry).Value)
+		c.onEvicted(e.Value.(*entry).key, e.Value.(*entry).value)
 	}
 }
 
